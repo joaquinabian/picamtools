@@ -8,20 +8,30 @@ from picamera import PiCamera
 from PIL import Image
 import numpy as np
 import os
+import sys
 import time
 import datetime
 import glob
+import logging
 from fractions import Fraction
 #
 path ='/home/pi/sunrise'
 photo = os.path.join(path, 'image{0:06d}.jpg')
-REPORT = '#=%4i HM=%8s SS=%7i FR=%7.3f BR=%.1f'
+logfile = os.path.join(path, 'timelapse.log')
+REPORT = '#=%4i HM=%8s SS=%7i FR=%7.3f ISO=%3i BR=%.1f'
 #
-tlapse_min = 360       # duration (min) of timelapse
-interval_s = 5         # delay (seconds) between captures
+logging.basicConfig(level=logging.DEBUG,
+                    handlers=[logging.FileHandler(logfile, filemode='w', 
+                                                  encoding='utf-8'),
+                              logging.StreamHandler(sys.stdout)
+                             ]
+                    )
+#
+duration = 360         # duration (min) of timelapse
+interval = 5           # delay (seconds) between captures
 start = (13, 6)        # time (day, h) to start 
 #
-numphotos = int((tlapse_min * 60) / interval_s)     # number of photos to take
+numphotos = int((duration * 60) / interval_s)     # number of photos to take
 print("number of photos to take = ", numphotos)
 #
 def chek_start(start):
@@ -50,12 +60,20 @@ def check_path(path):
                 os.remove(arch)
     else:
         os.mkdir(path)
-
+#        
+def check_iso(cam, iso):
+    if cam.exposure_speed < 500:
+        if cam.iso > 100:
+            cam.iso -= 50
+    elif cam.exposure_speed > 90_000:
+        if cam.iso < 800:
+            cam.iso += 50
+#
 #
 if __name__ == '__main__':
 
     date = check_start(start)
-    print("Timelapse started at: %s" + date)
+    logging.info("Timelapse started at: %s" + date)
     #
     cam = PiCamera()
     cam.resolution = (2028, 1520)
@@ -73,11 +91,10 @@ if __name__ == '__main__':
     auto = True
     ss = 0
     new_ss = 99_999
-    new_iso = 800
     #
     for i in range(numphotos):
-        print(REPORT % (i, get_time(), cam.exposure_speed,
-                        cam.framerate, brghtnss))
+        logging.info(REPORT % (i, get_time(), cam.exposure_speed,
+                               cam.framerate, cam.iso, brghtnss))
         current = photo.format(i)
         cam.capture(current)
         im = Image.open(current)
@@ -92,19 +109,15 @@ if __name__ == '__main__':
                 new_ss = 0
         
         if new_ss == 0:
-            if cam.exposure_speed < 500:
-                if cam.iso > 100:
-                    cam.iso -= 50
-            elif cam.exposure_speed > 90_000:
-                if cam.iso < 800:
-                    cam.iso += 50
+            check_iso(cam)
+           
         #
         if new_ss != ss:
             ss = new_ss
             cam.shutter_speed = ss
     
-        sleep(interval_s)
+        sleep(interval)
     #
     cam.stop_preview()
     #
-    print("Done taking photos.")
+    logging.info("Done taking photos.")
