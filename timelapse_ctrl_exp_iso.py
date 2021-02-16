@@ -4,37 +4,47 @@
 # set at f8 and focus 0.7 m
 # iso 800
 #
-from picamera import PiCamera
-from PIL import Image
-import numpy as np
 import os
 import sys
 import time
 import datetime
 import glob
 import logging
+import termios
+import numpy as np
+from picamera import PiCamera
+from PIL import Image
+from inputimeout import inputimeout, TimeoutOccurred
 from fractions import Fraction
 #
-path ='/home/pi/sunrise'
-photo = os.path.join(path, 'image{0:06d}.jpg')
-logfile = os.path.join(path, 'timelapse.log')
-REPORT = '#=%4i HM=%8s SS=%7i FR=%7.3f ISO=%3i BR=%.1f'
 #
-logging.basicConfig(level=logging.DEBUG,
-                    handlers=[logging.FileHandler(logfile, filemode='w', 
-                                                  encoding='utf-8'),
-                              logging.StreamHandler(sys.stdout)
-                             ]
-                    )
+# Get ready for a config file
+path ='/home/pi/sunrise'
+REPORT = '#=%4i HM=%8s SS=%7i FR=%7.3f ISO=%3i BR=%.1f'
 #
 duration = 360         # duration (min) of timelapse
 interval = 5           # delay (seconds) between captures
-start = (13, 6)        # time (day, h) to start 
+start = (16, 11)       # time (day, h) to start 
 #
-numphotos = int((duration * 60) / interval_s)     # number of photos to take
-print("number of photos to take = ", numphotos)
+iso = 800                    # iso  
+resolution = (2028, 1520)    # resolution
+sensor_mode = 3              # sensor mode night (3)
 #
-def chek_start(start):
+framerate = 0.1              # frames per second
+#
+#
+def log(path):
+    ""
+    logfile = os.path.join(path, 'timelapse.log')
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(message)s',
+                        handlers=[logging.FileHandler(logfile, mode='w', 
+                                                  encoding='utf-8'),
+                                  logging.StreamHandler(sys.stdout)
+                                 ]
+                        )
+#
+def check_start(start):
     while True:
         dateraw = datetime.datetime.now()
         hour = dateraw.hour
@@ -49,20 +59,32 @@ def chek_start(start):
 #
 def get_time():
     dateraw = datetime.datetime.now()
-    return ('%2i:%2i:%2i' % (dateraw.hour, dateraw.minute, dateraw.second))
+    return ('%02i:%02i:%02i' % (dateraw.hour, dateraw.minute, dateraw.second))
 #
 def check_path(path):
+    ""
     if os.path.exists(path):
-        kieres = input('quieres borrar el archivo (si/no) ?')
-        if kieres == 'si':
-            path_glob = os.path.join(path, '*.jpg')
-            for arch in glob.glob(path_glob):
-                os.remove(arch)
+        
+        warning= ('Picture directory already exists\n'
+                  'Erase old pictures (yes/no) ?'
+                  )
+        try:  
+            kieres = inputimeout(prompt=warning, timeout=30)
+            if kieres == 'yes':
+                path_glob = os.path.join(path, '*.jpg')
+                for arch in glob.glob(path_glob):
+                    os.remove(arch)
+        except (TimeoutOccurred, termios.error):
+            dateraw = datetime.datetime.now()
+            path = '%s_%i_%i' % (path, dateraw.hour, dateraw.minute)
+            os.mkdir(path)        
     else:
         os.mkdir(path)
+    return path
 #        
-def check_iso(cam, iso):
-    if cam.exposure_speed < 500:
+def check_iso(cam):
+    ""
+    if cam.exposure_speed < 5000:
         if cam.iso > 100:
             cam.iso -= 50
     elif cam.exposure_speed > 90_000:
@@ -71,19 +93,27 @@ def check_iso(cam, iso):
 #
 #
 if __name__ == '__main__':
-
+    
+    photo = os.path.join(path, 'image{0:06d}.jpg')
+    path = check_path(path)
+    log(path)
+    logging.info("Program started at %s" % get_time())
+    numphotos = int((duration * 60) / interval)     # number of photos to take
+    #
+    logging.info("photos to take = %i" % numphotos)
+    logging.info('resolution = %ix%i' % resolution)
+    logging.info('sensor mode = %i\nISO = %i\nframe rate = %f' % (sensor_mode, iso, framerate))
+    #
     date = check_start(start)
-    logging.info("Timelapse started at: %s" + date)
+    logging.info("Timelapse started at %s" % date)
     #
     cam = PiCamera()
-    cam.resolution = (2028, 1520)
-    cam.sensor_mode = 3  
-    cam.iso = 800
-    cam.framerate = Fraction(1, 10)
+    cam.resolution = resolution
+    cam.sensor_mode = sensor_mode  
+    cam.iso = iso
+    cam.framerate = framerate
     #
-    t0 = time.time()
-    check_path(path)
-    sleep(max(0, 20 - (time.time()-t0)))
+    time.sleep(20)
     #
     cam.start_preview(fullscreen=False, window=(895,300,1014,760))    
     #
@@ -100,9 +130,16 @@ if __name__ == '__main__':
         im = Image.open(current)
         brghtnss = np.mean(im)
         #
-        if brghtnss < 50:
+        if brghtnss < 5:
+            new_ss += 150_000
+            new_ss = min(1_000_000, new_ss)
+        elif brghtnss < 50:
             new_ss += 50_000
             new_ss = min(1_000_000, new_ss)
+        elif brghtnss > 200:
+            new_ss -= 150_000
+            if new_ss < 85_000:
+                new_ss = 0
         elif brghtnss > 150:
             new_ss -= 50_000
             if new_ss < 85_000:
@@ -110,14 +147,14 @@ if __name__ == '__main__':
         
         if new_ss == 0:
             check_iso(cam)
-           
         #
         if new_ss != ss:
             ss = new_ss
             cam.shutter_speed = ss
     
-        sleep(interval)
+        time.sleep(interval)
     #
     cam.stop_preview()
     #
     logging.info("Done taking photos.")
+
