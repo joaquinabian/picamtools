@@ -15,7 +15,6 @@ import numpy as np
 from picamera import PiCamera
 from PIL import Image
 from inputimeout import inputimeout, TimeoutOccurred
-from fractions import Fraction
 #
 #
 # Get ready for a config file
@@ -24,13 +23,13 @@ REPORT = '#=%4i HM=%8s SS=%7i FR=%7.3f ISO=%3i BR=%.1f'
 #
 duration = 360         # duration (min) of timelapse
 interval = 5           # delay (seconds) between captures
-start = (16, 11)       # time (day, h) to start 
+start = (17, 12)       # time (day, h) to start 
 #
-iso = 800                    # iso  
-resolution = (2028, 1520)    # resolution
-sensor_mode = 3              # sensor mode night (3)
+iso = 800                  # iso  
+resolution = (2028, 1520)  # resolution
+sensor_mode = 3            # sensor mode night (3)
 #
-framerate = 0.1              # frames per second
+framerate = 0.1            # frames per second
 #
 #
 def log(path):
@@ -52,14 +51,15 @@ def check_start(start):
         if dateraw.day == start[0]:
             if hour >= start[1]:
                 print('')
-                datetimeformat = dateraw.strftime("%Y-%m-%d_%H:%M")
+                datetimeformat = dateraw.strftime("%Y-%m-%d %H:%M:%S")
                 return (datetimeformat)
         #
         time.sleep(300)
 #
 def get_time():
     dateraw = datetime.datetime.now()
-    return ('%02i:%02i:%02i' % (dateraw.hour, dateraw.minute, dateraw.second))
+    datetimeformat = dateraw.strftime("%Y-%m-%d %H:%M:%S")
+    return datetimeformat.split(' ')
 #
 def check_path(path):
     ""
@@ -94,10 +94,11 @@ def check_iso(cam):
 #
 if __name__ == '__main__':
     
-    photo = os.path.join(path, 'image{0:06d}.jpg')
     path = check_path(path)
     log(path)
-    logging.info("Program started at %s" % get_time())
+    logging.info("Program started at %s %s" % tuple(get_time()))
+    #
+    photo = os.path.join(path, 'image{0:06d}.jpg')
     numphotos = int((duration * 60) / interval)     # number of photos to take
     #
     logging.info("photos to take = %i" % numphotos)
@@ -123,28 +124,24 @@ if __name__ == '__main__':
     new_ss = 99_999
     #
     for i in range(numphotos):
-        logging.info(REPORT % (i, get_time(), cam.exposure_speed,
+        logging.info(REPORT % (i, get_time()[1], cam.exposure_speed,
                                cam.framerate, cam.iso, brghtnss))
         current = photo.format(i)
         cam.capture(current)
         im = Image.open(current)
         brghtnss = np.mean(im)
         #
-        if brghtnss < 5:
-            new_ss += 150_000
+        if brghtnss < 50:
+            new_ss = new_ss * (2 - (0.01 * brghtnss))
+            new_ss = int(new_ss)
             new_ss = min(1_000_000, new_ss)
-        elif brghtnss < 50:
-            new_ss += 50_000
-            new_ss = min(1_000_000, new_ss)
-        elif brghtnss > 200:
-            new_ss -= 150_000
-            if new_ss < 85_000:
+        elif brghtnss > 180:
+            if new_ss < 120_000:
                 new_ss = 0
-        elif brghtnss > 150:
-            new_ss -= 50_000
-            if new_ss < 85_000:
-                new_ss = 0
-        
+            else:
+                new_ss = new_ss * (0.1 + (0.002 * brghtnss))
+                new_ss = int(new_ss) 
+        #
         if new_ss == 0:
             check_iso(cam)
         #
