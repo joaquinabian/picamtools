@@ -27,7 +27,7 @@ start = (17, 12)       # time (day, h) to start
 #
 iso = 800                  # iso  
 resolution = (2028, 1520)  # resolution
-sensor_mode = 3            # sensor mode night (3)
+sensor_mode = 3            # full FOV, no binning, 4:3, max resolution
 #
 framerate = 0.1            # frames per second
 #
@@ -82,13 +82,13 @@ def check_path(path):
         os.mkdir(path)
     return path
 #        
-def check_iso(cam):
+def check_iso(cam, brghtnss):
     ""
-    if cam.exposure_speed < 5000:
-        if cam.iso > 100:
+    if cam.iso > 100:
+        if (cam.exposure_speed < 5000) or (brghtnss > 200):
             cam.iso -= 50
-    elif cam.exposure_speed > 90_000:
-        if cam.iso < 800:
+    if cam.iso < 800:
+        if (cam.exposure_speed > 80_000) or (brghtnss < 10):
             cam.iso += 50
 #
 #
@@ -124,6 +124,7 @@ if __name__ == '__main__':
     new_ss = 99_999
     #
     for i in range(numphotos):
+        #print('CXM=', cam.exposure_mode)
         logging.info(REPORT % (i, get_time()[1], cam.exposure_speed,
                                cam.framerate, cam.iso, brghtnss))
         current = photo.format(i)
@@ -132,6 +133,8 @@ if __name__ == '__main__':
         brghtnss = np.mean(im)
         #
         if brghtnss < 50:
+            if new_ss == 0:
+                new_ss = 10_000
             new_ss = new_ss * (2 - (0.01 * brghtnss))
             new_ss = int(new_ss)
             new_ss = min(1_000_000, new_ss)
@@ -142,8 +145,7 @@ if __name__ == '__main__':
                 new_ss = new_ss * (0.1 + (0.002 * brghtnss))
                 new_ss = int(new_ss) 
         #
-        if new_ss == 0:
-            check_iso(cam)
+        check_iso(cam, brghtnss)
         #
         if new_ss != ss:
             ss = new_ss
@@ -154,4 +156,3 @@ if __name__ == '__main__':
     cam.stop_preview()
     #
     logging.info("Done taking photos.")
-
