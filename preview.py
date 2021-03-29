@@ -20,7 +20,11 @@ cam.sensor_mode = 3
 cam.iso = 800
 #cam.exposure_mode = 'night'
 cam.framerate = Fraction(1, 5)
-cam.shutter_speed = 1_000_000
+#cam.framerate = 1
+# night
+#cam.shutter_speed = 10_000_000
+# moon
+cam.shutter_speed = 1_000
 #
 cam.start_preview(fullscreen=False, window=(895,300,1014,760))
 #
@@ -32,7 +36,7 @@ print('CR= ', cam.resolution)
 i = 0
 while True:
     print(report % (i, cam.exposure_speed, cam.framerate))
-    sleep(5)
+    sleep(15)
     i += 1
 # 
 print("Done taking photos.")

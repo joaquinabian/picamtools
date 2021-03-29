@@ -5,10 +5,12 @@
 import datetime
 import os 
 #
-path = "/home/pi/sunrise/*.jpg"
+#path = "/home/pi/sunrise/*.jpg"
+path = "/home/pi/luna_raise/*.jpg"
 save = "/home/pi/Videos/%s.mp4"
 #
-fps = 10                # video frames per second
+#fps = 10                # video frames per second
+fps = 7                 # video frames per second
 res = '2028x1520'       # video resolution ? 
                         # 1280x720 => 4321 pics, 6.9 GB => 206 MB
                         # 2028x1520 =>                  => 206 MB  (no change)
