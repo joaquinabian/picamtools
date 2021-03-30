@@ -51,8 +51,9 @@ def check_path(path):
                 for arch in glob.glob(path_glob):
                     os.remove(arch)
             else:
-                path = path + '_'
-                os.mkdir(path)
+                dateraw = datetime.datetime.now()
+                path = '%s_%i_%i' % (path, dateraw.hour, dateraw.minute)
+                os.mkdir(path)   
         except (TimeoutOccurred, termios.error):
             dateraw = datetime.datetime.now()
             path = '%s_%i_%i' % (path, dateraw.hour, dateraw.minute)
