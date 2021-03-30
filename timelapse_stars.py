@@ -8,24 +8,25 @@ import os
 import sys
 import time
 import logging
-from picamera import PiCamera
+import picamera
 from cam_tools import check_start, get_time, check_path
 #
 #
 # Get ready for a config file
 path ='/home/pi/stars'
-REPORT = '#=%4i HM=%8s SS=%7i FR=%7.3f ISO=%3i BR=%.1f'
+REPORT = '#=%4i HM=%8s SS=%7i FR=%7.3f ISO=%3i'
 #
 duration = 160         # duration (min) of timelapse
 interval = 5          # delay (seconds) between captures
-start = (28, 18)       # time (day, h) to start 
+start = (30, 12)       # time (day, h) to start 
 #
 iso = 800                  # iso
 speed = 15_000_000
 resolution = (2028, 1520)  # resolution
 sensor_mode = 3            # full FOV, no binning, 4:3, max resolution
 #
-framerate = 0.09            # frames per second
+# must be < 0.08 to allow 15 s exposition
+framerate = 0.05           # frames per second
 #
 #
 def log(path):
@@ -56,14 +57,15 @@ if __name__ == '__main__':
     date = check_start(start)
     logging.info("Timelapse started at %s" % date)
     #
-    cam = PiCamera()
+    cam = picamera.PiCamera()
     cam.resolution = resolution
     cam.sensor_mode = sensor_mode  
     cam.iso = iso
     cam.framerate = framerate   # always before shutter_speed
     cam.shutter_speed = speed
+    picamera.PiCamera.CAPTURE_TIMEOUT = 120
     #
-    time.sleep(20)
+    time.sleep(10)
     #
     cam.start_preview(fullscreen=False, window=(895,300,1014,760))    
     #
@@ -72,9 +74,13 @@ if __name__ == '__main__':
     for i in range(numphotos):
         #print('CXM=', cam.exposure_mode)
         logging.info(REPORT % (i, get_time()[1], cam.exposure_speed,
-                               cam.framerate, cam.iso, brghtnss))
+                               cam.framerate, cam.iso))
         current = photo.format(i)
-        cam.capture(current)  
+        try:
+            cam.capture(current)
+        except picamera.exc.PiCameraRuntimeError:
+            logging.error('PiCameraError')
+        
         time.sleep(interval)
     #
     cam.stop_preview()
