@@ -66,7 +66,6 @@ if __name__ == '__main__':
     logging.info('resolution = %ix%i' % resolution)
     logging.info('sensor mode = %i\nISO = %i\nframe rate = %f' % (sensor_mode, iso, framerate))
     #
-    
     cam = PiCamera()
     cam.resolution = resolution
     cam.sensor_mode = sensor_mode  
@@ -85,7 +84,7 @@ if __name__ == '__main__':
     new_ss = 99_999
     #
     for i in range(numphotos):
-        #print('CXM=', cam.exposure_mode)
+        #
         logging.info(REPORT % (i, get_time()[1], cam.exposure_speed,
                                cam.framerate, cam.iso, brghtnss))
         current = photo.format(i)
