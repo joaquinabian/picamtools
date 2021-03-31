@@ -13,15 +13,15 @@ from cam_tools import check_start, get_time, check_path
 #
 #
 # Get ready for a config file
-path ='/home/pi/luna_raise'
+path ='/home/pi/luna_raise_2'
 REPORT = '#=%4i HM=%8s SS=%7i FR=%7.3f ISO=%3i BR=%.1f'
 #
-duration = 160         # duration (min) of timelapse
+duration = 180         # duration (min) of timelapse
 interval = 5           # delay (seconds) between captures
-start = (28, 18)       # time (day, h) to start 
+start = (30, 21)       # time (day, h) to start 
 #
 iso = 800                  # iso
-speed = 30_000
+speed = 500_000
 resolution = (2028, 1520)  # resolution
 sensor_mode = 3            # full FOV, no binning, 4:3, max resolution
 #
@@ -51,21 +51,21 @@ if __name__ == '__main__':
     #
     logging.info("photos to take = %i" % numphotos)
     logging.info('resolution = %ix%i' % resolution)
-    logging.info('sensor mode = %i\nISO = %i\nframe rate = %f' % (sensor_mode, iso, framerate))
-    #
-    date = check_start(start)
-    logging.info("Timelapse started at %s" % date)
+    logging.info('sensor mode = %i\nISO = %i\nframe rate = %.3f' % (sensor_mode, iso, framerate))
     #
     cam = PiCamera()
     cam.resolution = resolution
     cam.sensor_mode = sensor_mode  
     cam.iso = iso
-    cam.shutter_speed = speed
     cam.framerate = framerate
+    cam.shutter_speed = speed
     #
-    time.sleep(20)
+    time.sleep(10)
     #
     cam.start_preview(fullscreen=False, window=(895,300,1014,760))    
+    #
+    date = check_start(start)
+    logging.info("Timelapse started at %s" % date)
     #
     brghtnss = 0
     #
