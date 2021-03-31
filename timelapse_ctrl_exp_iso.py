@@ -17,7 +17,7 @@ from cam_tools import check_start, get_time, check_path
 #
 #
 # Get ready for a config file
-path ='/home/pi/sunrise'
+path ='/home/pi/Pictures/sunrise'
 REPORT = '#=%4i HM=%8s SS=%7i FR=%7.3f ISO=%3i BR=%.1f'
 #
 duration = 360         # duration (min) of timelapse
@@ -66,9 +66,7 @@ if __name__ == '__main__':
     logging.info('resolution = %ix%i' % resolution)
     logging.info('sensor mode = %i\nISO = %i\nframe rate = %f' % (sensor_mode, iso, framerate))
     #
-    date = check_start(start)
-    logging.info("Timelapse started at %s" % date)
-    #
+    
     cam = PiCamera()
     cam.resolution = resolution
     cam.sensor_mode = sensor_mode  
@@ -78,6 +76,9 @@ if __name__ == '__main__':
     time.sleep(20)
     #
     cam.start_preview(fullscreen=False, window=(895,300,1014,760))    
+    #
+    date = check_start(start)
+    logging.info("Timelapse started at %s" % date)
     #
     brghtnss = 0
     ss = 0
